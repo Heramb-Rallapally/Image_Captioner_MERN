@@ -27,7 +27,12 @@
 .App-link {
   color: #61dafb;
 }
-
+.header-text {
+  font-size: 48px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  font-family: sans-serif;
+}
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
