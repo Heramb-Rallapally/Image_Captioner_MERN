@@ -6,6 +6,7 @@ function Upload() {
   const [image, setImage] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [message, setMessage] = useState("");
+  const [caption, setCaption] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,6 +31,7 @@ function Upload() {
       if (response.ok) {
         setMessage(data.message);
         setImageUrl(`http://localhost:5000${data.imageUrl}`); // Set the image URL from the response
+        setCaption(data.caption.caption); // Set the caption from the response
         setName("");
         setEmail("");
         setImage(null);
@@ -93,6 +95,7 @@ function Upload() {
           <img src={imageUrl} alt="Uploaded" style={{ maxWidth: '300px' }} />
         </div>
       )}
+      {caption && <p>{caption}</p>}
     </div>
   );
 }

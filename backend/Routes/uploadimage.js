@@ -3,12 +3,40 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const User = require('../models/User'); 
-
+const User = require('../models/User');
+const { spawn } = require('child_process');
 // Ensure uploads folder exists
 const uploadDir = path.join(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
+}
+function runPythonScript(imagePath) {
+  return new Promise((resolve, reject) => {
+    const python = spawn('python', ['caption.py', imagePath]);
+
+    let result = '';
+    let error = '';
+
+    python.stdout.on('data', (data) => {
+      result += data.toString();
+    });
+
+    python.stderr.on('data', (data) => {
+      error += data.toString();
+    });
+
+    python.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(error || `Python script exited with code ${code}`));
+      } else {
+        try {
+          resolve(JSON.parse(result));
+        } catch (parseError) {
+          reject(new Error(`Failed to parse Python output: ${result}`));
+        }
+      }
+    });
+  });
 }
 
 // Multer storage configuration
@@ -46,11 +74,12 @@ router.post('/uploadImageWithFile', upload.single('image'), async (req, res) => 
     console.log("Received name:", name);
     console.log("Received email:", email);
     console.log("Uploaded file:", req.file);
-
+    console.log("File path:", req.file ? req.file.path : 'No file uploaded');
     if (!name || !email || !req.file) {
       return res.status(400).json({ message: 'Name, email, and image are required.' });
     }
-
+    const pythonResult = await runPythonScript(req.file.path);
+    console.log("Python output:", pythonResult);
     // Store user in DB
     const newUser = await User.create({
       name,
@@ -63,7 +92,8 @@ router.post('/uploadImageWithFile', upload.single('image'), async (req, res) => 
       success: true,
       message: 'User with image saved successfully',
       user: newUser,
-      imageUrl: `/uploads/${req.file.filename}` // send URL to frontend
+      imageUrl: `/uploads/${req.file.filename}`,
+      caption:pythonResult // send URL to frontend
     });
 
   } catch (error) {

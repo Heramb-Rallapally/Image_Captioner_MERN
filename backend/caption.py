@@ -21,7 +21,8 @@ def main():
         processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Always use CPU
+        device = "cpu"
         model.to(device)
 
         inputs = processor(images=image, return_tensors="pt").to(device)
