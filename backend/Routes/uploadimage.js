@@ -1,39 +1,78 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // Import the User model
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const User = require('../models/User'); 
 
-// This route will be accessible at POST /api/uploadImage
-router.post('/uploadImage', async (req, res) => {
-    console.log("Entered the /uploadImage route");
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "..", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
-    try {
-        // Get the name and email from the request body
-        const { name, email } = req.body;
-        console.log("Received name:", name);
-        console.log("Received email:", email);
-
-        // Basic validation
-        if (!name || !email) {
-            return res.status(400).json({ message: 'Name and email are required.' });
-        }
-
-        // Create a new user document in the database
-        await User.create({
-            name: name,
-            email: email
-        });
-
-        res.status(200).json({ success: true, message: 'User data saved successfully' });
-
-    } catch (error) {
-        console.error("Error in /uploadImage route:", error.message);
-        // Handle potential duplicate email error
-        if (error.code === 11000) {
-            return res.status(409).json({ success: false, message: 'Email already exists.' });
-        }
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
+// Multer storage configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir); // store images in backend/uploads
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // unique filename
+  }
 });
 
-// FIX: You must export the router for it to be used in index.js
+// File filter (accept only images)
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files are allowed!"), false);
+    }
+    cb(null, true);
+  }
+});
+
+// Simple test route
+router.get("/test", (req, res) => {
+  res.json({ message: "Test route working!" });
+});
+
+// Upload route
+router.post('/uploadImageWithFile', upload.single('image'), async (req, res) => {
+  console.log("Entered /uploadImageWithFile route");
+
+  try {
+    const { name, email } = req.body;
+    console.log("Received name:", name);
+    console.log("Received email:", email);
+    console.log("Uploaded file:", req.file);
+
+    if (!name || !email || !req.file) {
+      return res.status(400).json({ message: 'Name, email, and image are required.' });
+    }
+
+    // Store user in DB
+    const newUser = await User.create({
+      name,
+      email,
+      imagePath: req.file.path, // backend path
+      imageUrl: `/uploads/${req.file.filename}` // frontend URL
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'User with image saved successfully',
+      user: newUser,
+      imageUrl: `/uploads/${req.file.filename}` // send URL to frontend
+    });
+
+  } catch (error) {
+    console.error("Error in /uploadImageWithFile route:", error.message);
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Email already exists.' });
+    }
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

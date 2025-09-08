@@ -4,15 +4,14 @@ const port = 5000;
 const cors = require('cors');
 const mongoDB = require('./db');
 const User = require('./models/User');
+const path = require('path');
 
 // --- Middleware ---
 app.use(cors());
 app.use(express.json());
-
-// --- Routes ---
-// FIX 1: Removed the trailing space from the require path.
-app.use('/api', require("./Routes/uploadImage"));
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api', require("./Routes/uploadimage"));
+console.log(__dirname)
 app.get('/', (req, res) => {
   res.send('Hello World! Server is running.');
 });
